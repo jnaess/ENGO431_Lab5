@@ -6,6 +6,10 @@ int main() {
 	res.getObject("object.txt");
 	res.getImage("image.txt");
 	res.approximate();
-	res.designA();
+	while (!res.criteria) {
+		res.designA();
+		res.getxhat();
+		res.update();
+	}
 	return 0;
 }

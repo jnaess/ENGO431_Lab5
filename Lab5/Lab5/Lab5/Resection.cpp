@@ -80,7 +80,7 @@ void Resection::approximate() {
 	MatrixXd param(4, 1); // a,b,tx,ty
 	MatrixXd l(row, 1);
 	int k = 0;
-	double z_ave = 0;
+	
 	for (unsigned int i = 0; i < row - 1; i += 2) {
 		l(i, 0) = objcoord[k].X;
 		l(i + 1, 0) = objcoord[k].Y;
@@ -95,8 +95,16 @@ void Resection::approximate() {
 	Xc = param(2, 0);
 	Yc = param(3, 0);
 	Zc = c * lamda + z_ave;
-	kappa = atan(param(1, 0) / param(0, 0));
-	
+	kappa = atan2(param(1, 0) , param(0, 0));
+	//cout << "param    " << Xc << "    "<< Yc << "    " << Zc << "    " << kappa << endl;
+	xhat.resize(6, 1);
+	xhat(0, 0) = Xc;
+	xhat(1, 0) = Yc;
+	xhat(2, 0) = Zc;
+	xhat(3, 0) = omega;
+	xhat(4, 0) = phi;
+	xhat(5, 0) = kappa;
+	//cout << "'approximate" << xhat << endl;
 }
 void Resection::update() {
 	Xc = xhat(0, 0);
@@ -131,8 +139,11 @@ MatrixXd Resection::rotate(double angle, int axis) {
 
 void Resection::designA() {
 	A.resize(num_pt * 2, 6);
+	w.resize(num_pt * 2, 1);
 	MatrixXd M(3,3);
 	M = rotate(kappa, 3) * rotate(phi, 2) * rotate(omega, 1);
+	
+	
 	int j = 0;
 	for (unsigned int i = 0; i < num_pt*2 - 1; i += 2) {
 		double dx = objcoord[j].X - Xc;
@@ -148,7 +159,8 @@ void Resection::designA() {
 		A(i, 0) = cW * (M(2, 0) * U - M(0, 0) * W);
 		A(i, 1) = cW * (M(2, 1) * U - M(0, 1) * W);
 		A(i, 2) = cW * (M(2, 2) * U - M(0, 2) * W);
-		A(i, 3) = cW * (dy * (U * M(2, 2) - W * M(0, 2)) - dz*(U * M(2, 1) - W * M(0, 1)));
+		//A(i, 3) = cW * (dy * (U * M(2, 2) - W * M(0, 2)) - dz*(U * M(2, 1) - W * M(0, 1)));
+		A(i, 3) = dy * A(i, 2) - dz * A(i, 1);
 		A(i, 4) = cW* (dx * (-W * sin(phi) * cos(kappa) - U * cos(phi)) + dy * (W * sin(omega) * cos(phi)*cos(kappa)- U * sin(omega) * sin(phi))
 			+ dz * (-W * cos(omega) * cos(phi) * cos(kappa) + U * cos(omega) * sin(phi)));
 		A(i, 5) = -c * V / W;
@@ -157,11 +169,54 @@ void Resection::designA() {
 		A(i+1, 1) = cW * (M(2, 1) * V - M(1, 1) * W);
 		A(i+1, 2) = cW * (M(2, 2) * V - M(1, 2) * W);
 		A(i+1, 3) = cW * (dy * (V * M(2, 2) - W * M(1, 2)) - dz * (V * M(2, 1) - W * M(1, 1)));
-		A(i+1, 4) = cW * (dx * (-W * sin(phi) * sin(kappa) - V * cos(phi)) + dy * (-W * sin(omega) * cos(phi)*sin(kappa) - V * sin(omega)*sin(phi))
+		A(i+1, 4) = cW * (dx * (W * sin(phi) * sin(kappa) - V * cos(phi)) + dy * (-W * sin(omega) * cos(phi)*sin(kappa) - V * sin(omega)*sin(phi))
 			+ dz * (W * cos(omega) * cos(phi) * sin(kappa) + V * cos(omega) * sin(phi)));
 		A(i+1, 5) = c * U / W;
+	
+		w(i, 0) = -0.006-(c * U / W)- imcoord[j].x;
+		w(i+1, 0) =  0.006 - (c * V / W) - imcoord[j].y;
 		j++;
 	}
-	cout << A;
 
+	cout << A<< endl;
+	cout <<"misclosure" << endl <<w << endl;
+
+}
+
+void Resection::getxhat() {
+	double stdv = 0.015;
+	double S = ceil((Zc - z_ave) /c*1000);
+	double tol_c= S * stdv / 10000;
+	MatrixXd tol(1, 2);
+	tol << stdv / (10*c),stdv / (10 * 162);
+	double tol_min = tol.minCoeff();
+	
+
+	cout << "tolerance is  " << tol_c << "    "<< tol <<endl;;
+	MatrixXd P(num_pt*2, num_pt*2);
+	P.setIdentity();
+	P = P / (stdv/stdv);
+
+	MatrixXd delta(6, 1);
+	delta = -(A.transpose()*P * A).inverse() * A.transpose() * P*w;
+	cout <<"delta  " << endl << delta << endl;
+	xhat = xhat + delta;
+
+	vector <double> d;
+	for (int i= 0; i < delta.size(); i++) {
+		d.push_back(abs(delta(i, 0)));
+	}
+	double min1 = *max_element(d.begin(),d.begin() + 3);
+	double min2 = *max_element(d.begin()+3, d.end());
+	cout << " min   " << min1 << "min2   " << min2<<endl;
+	if (tol_c < min1 || tol_min < min2){
+		count++;
+		cout << "counter  " << count << endl;
+	}
+	else {
+		criteria = true;
+		cout << "final xhat" << endl << xhat << endl;
+	}
+	
+	//exit(1);
 }

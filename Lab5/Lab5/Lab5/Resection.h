@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <algorithm>
 
 using namespace Eigen;
 using namespace std;
@@ -21,11 +22,14 @@ class Resection {
 public:
 	vector <Model> imcoord;
 	vector <Model> objcoord;
-	MatrixXd xhat, A;
+	MatrixXd xhat, A, w;
 	int num_pt = 0;
+	int count = 0;
+	double z_ave = 0;
 	double Xc, Yc, Zc, omega=0, phi=0, kappa;
 	double c = 152.15; // sample data
 	//double c = 153.358; // our data
+	bool criteria = false;
 	Resection();
 	void getImage(string filename);
 	void getObject(string filename);
@@ -33,4 +37,5 @@ public:
 	void update();
 	MatrixXd rotate(double angle, int axis);
 	void designA();
+	void getxhat();
 };
