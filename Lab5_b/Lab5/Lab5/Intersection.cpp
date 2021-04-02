@@ -54,6 +54,8 @@ void Intersection::getEOP(string filename) {
 				ssin >> eop[i].omega;
 				ssin >> eop[i].phi;
 				ssin >> eop[i].kappa;
+
+				// CONVERTING EOP VALUES FROM DECIMAL DEGREES TO RADIANS
 				eop[i].omega *= ((atan(1) * 4) / 180);
 				eop[i].phi *= ((atan(1) * 4) / 180);
 				eop[i].kappa *= ((atan(1) * 4) / 180);
@@ -115,10 +117,11 @@ void Intersection::approximate() {
 	MatrixXd x(3, 1);
 	x.setZero();
 
+	
+	results.resize(num_pt);
+	// NEED TO CONVERT ANGLES TO RADIANS
 	MatrixXd M_L(3, 3);
 	MatrixXd M_R(3, 3);
-	x_hat.resize(num_pt);
-	// NEED TO CONVERT ANGLES TO RADIANS
 	M_L = rotate(eop[0].kappa, 3) * rotate(eop[0].phi, 2) * rotate(eop[0].omega, 1);
 	M_R = rotate(eop[1].kappa, 3) * rotate(eop[1].phi, 2) * rotate(eop[1].omega, 1);
 	
@@ -151,14 +154,15 @@ void Intersection::approximate() {
 
 		x = (A.transpose() * A).inverse() * A.transpose() * b;
 
-		x_hat[i].X = x(0, 0);
-		x_hat[i].Y = x(1, 0);
-		x_hat[i].Z = x(2, 0);
-		cout << x_hat[i].X << " " << x_hat[i].Y << " " << x_hat[i].Z << endl;
+		results[i].X = x(0, 0);
+		results[i].Y = x(1, 0);
+		results[i].Z = x(2, 0);
+		cout << results[i].X << " " << results[i].Y << " " << results[i].Z << endl;
 	}
 	
 }
 
+// TAKES ANGLE AS RADIANS
 MatrixXd Intersection::rotate(double angle, int axis) {
 	MatrixXd R(3, 3);
 	if (axis == 1) {
@@ -230,28 +234,76 @@ void Intersection::approximate() {
 }
 */
 
-/*
-void Intersection::update() {
-	Xc = xhat(0, 0);
-	Yc = xhat(1, 0);
-	Zc = xhat(2, 0);
-	omega = xhat(3, 0);
-	phi = xhat(4, 0);
-	kappa = xhat(5, 0);
+
+void Intersection::update(int point_index) {
+	// VV RENAME THE SECOND XHAT VV
+	results[point_index].X = x_hat(0, 0);
+	results[point_index].Y = x_hat(1, 0);
+	results[point_index].Z = x_hat(2, 0);
 }
 
 
-void Intersection::designA() {
-	A.resize(num_pt * 2, 3);
-	w.resize(num_pt * 2, 1);
-	MatrixXd M(3,3);
-	cout << omega << " " << phi << " " << kappa << -18.854 * ((atan(1) * 4) / 180) <<  endl;
-	cout << kappa - (-18.854 * ((atan(1) * 4) / 180)) << endl;
-	kappa = -18.854 * ((atan(1) * 4) / 180);
+void Intersection::designA(int point_index) {
+	A.resize(4, 3);
+	w.resize(4, 1);
+	//MatrixXd M(3,3);
+	//cout << omega << " " << phi << " " << kappa << -18.854 * ((atan(1) * 4) / 180) <<  endl;
+	//cout << kappa - (-18.854 * ((atan(1) * 4) / 180)) << endl;
+	//kappa = -18.854 * ((atan(1) * 4) / 180);
 
-	M = rotate(kappa, 3) * rotate(phi, 2) * rotate(omega, 1);
+	//M = rotate(kappa, 3) * rotate(phi, 2) * rotate(omega, 1);
+	MatrixXd M_L(3, 3);
+	MatrixXd M_R(3, 3);
+	M_L = rotate(eop[0].kappa, 3) * rotate(eop[0].phi, 2) * rotate(eop[0].omega, 1);
+	M_R = rotate(eop[1].kappa, 3) * rotate(eop[1].phi, 2) * rotate(eop[1].omega, 1);
+
+
+	double dxL = results[point_index].X - eop[0].Xc;
+	double dyL = results[point_index].Y - eop[0].Yc;
+	double dzL = results[point_index].Z - eop[0].Zc;
+
+	double dxR = results[point_index].X - eop[1].Xc;
+	double dyR = results[point_index].Y - eop[1].Yc;
+	double dzR = results[point_index].Z - eop[1].Zc;
+	//cout << Xc << " " << Yc << " " << Zc << endl;
+	cout << "dx = " << dxL << endl;
+	cout << "dy = " << dyL << endl;
+	cout << "dz = " << dzL << endl;
 	
-	
+	// First two rows of design matrix (left image point)
+	double UL = M_L(0, 0) * dxL + M_L(0, 1) * dyL + M_L(0, 2) * dzL;
+	double VL = M_L(1, 0) * dxL + M_L(1, 1) * dyL + M_L(1, 2) * dzL;
+	double WL = M_L(2, 0) * dxL + M_L(2, 1) * dyL + M_L(2, 2) * dzL;
+	double cWL = -c / (WL * WL);
+
+	A(0, 0) = -cWL * (M_L(2, 0) * UL - M_L(0, 0) * WL);
+	A(0, 1) = -cWL * (M_L(2, 1) * UL - M_L(0, 1) * WL);
+	A(0, 2) = -cWL * (M_L(2, 2) * UL - M_L(0, 2) * WL);
+	A(1, 0) = cWL * (M_L(2, 0) * VL - M_L(1, 0) * WL);
+	A(1, 1) = cWL * (M_L(2, 1) * VL - M_L(1, 1) * WL);
+	A(1, 2) = cWL * (M_L(2, 2) * VL - M_L(1, 2) * WL);
+
+	// Last two rows of design matrix (right image point)
+	double UR = M_R(0, 0) * dxR + M_R(0, 1) * dyR + M_R(0, 2) * dzR;
+	double VR = M_R(1, 0) * dxR + M_R(1, 1) * dyR + M_R(1, 2) * dzR;
+	double WR = M_R(2, 0) * dxR + M_R(2, 1) * dyR + M_R(2, 2) * dzR;
+	double cWR = -c / (WL * WL);
+
+	A(2, 0) = -cWR * (M_R(2, 0) * UR - M_R(0, 0) * WR);
+	A(2, 1) = -cWR * (M_R(2, 1) * UR - M_R(0, 1) * WR);
+	A(2, 2) = -cWR * (M_R(2, 2) * UR - M_R(0, 2) * WR);
+	A(3, 0) = cWR * (M_R(2, 0) * VR - M_R(1, 0) * WR);
+	A(3, 1) = cWR * (M_R(2, 1) * VR - M_R(1, 1) * WR);
+	A(3, 2) = cWR * (M_R(2, 2) * VR - M_R(1, 2) * WR);
+
+	w(0, 0) = -(c * UL / WL) - imcoord[point_index].x;
+	w(1, 0) = -(c * VL / WL) - imcoord[point_index].y;
+	w(2, 0) = -(c * UR / WR) - imcoord[point_index+num_pt].x;
+	w(3, 0) = -(c * VR / WR) - imcoord[point_index+num_pt].y;
+	cout << A << endl;
+	cout << "misclosure" << endl << w << endl;
+
+	/*
 	int j = 0;
 	for (unsigned int i = 0; i < num_pt*2 - 1; i += 2) {
 		Xc = 6338.6;
@@ -286,19 +338,18 @@ void Intersection::designA() {
 		//A(i+1, 5) = c * U / W;
 	
 		// VV WHAT IS UP WITH THIS VV
-		//w(i, 0) = -0.006 - (c * U / W) - imcoord[j].x;
-		//w(i + 1, 0) = 0.006 - (c * V / W) - imcoord[j].y;
+		w(i, 0) = -0.006 - (c * U / W) - imcoord[j].x;
+		w(i + 1, 0) = 0.006 - (c * V / W) - imcoord[j].y;
 		w(i, 0) = -(c * U / W) - imcoord[j].x;
 		w(i + 1, 0) = -(c * V / W) - imcoord[j].y;
 		j++;
 	}
-
-	cout << A<< endl;
-	cout <<"misclosure" << endl <<w << endl;
+	*/
+	
 
 }
-
-void Intersection::getxhat() {
+/*
+void Intersection::getxhat(int point_index) {
 	double stdv = 0.015;
 	double S = ceil((Zc - z_ave) /c*1000);
 	double tol_c= S * stdv / 10000;

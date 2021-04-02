@@ -29,9 +29,9 @@ class Intersection {
 public:
 	vector <Model> imcoord;
 	vector <EOP_model> eop;
-	vector <param> x_hat;
+	vector <param> results;
 	//vector <Model> objcoord;
-	// MatrixXd x_hat;
+	MatrixXd x_hat;
 	MatrixXd A, w;
 	int num_pt = 0;
 	int count = 0;
@@ -45,8 +45,8 @@ public:
 	void getEOP(string filename);
 	//void getObject(string filename);
 	void approximate();
-	void update();
+	void update(int point_index);
 	MatrixXd rotate(double angle, int axis);
-	void designA();
-	void getxhat();
+	void designA(int point_index);
+	void getxhat(int point_index);
 };
