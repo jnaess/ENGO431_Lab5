@@ -159,7 +159,7 @@ void Intersection::approximate() {
 		results[i].Z = x(2, 0);
 		cout << results[i].X << " " << results[i].Y << " " << results[i].Z << endl;
 	}
-	
+	//x_hat = x;
 }
 
 // TAKES ANGLE AS RADIANS
@@ -287,7 +287,7 @@ void Intersection::designA(int point_index) {
 	double UR = M_R(0, 0) * dxR + M_R(0, 1) * dyR + M_R(0, 2) * dzR;
 	double VR = M_R(1, 0) * dxR + M_R(1, 1) * dyR + M_R(1, 2) * dzR;
 	double WR = M_R(2, 0) * dxR + M_R(2, 1) * dyR + M_R(2, 2) * dzR;
-	double cWR = -c / (WL * WL);
+	double cWR = -c / (WR * WR);
 
 	A(2, 0) = -cWR * (M_R(2, 0) * UR - M_R(0, 0) * WR);
 	A(2, 1) = -cWR * (M_R(2, 1) * UR - M_R(0, 1) * WR);
@@ -348,44 +348,57 @@ void Intersection::designA(int point_index) {
 	
 
 }
-/*
+
 void Intersection::getxhat(int point_index) {
 	double stdv = 0.015;
-	double S = ceil((Zc - z_ave) /c*1000);
-	double tol_c= S * stdv / 10000;
+	double S = ceil((eop[0].Zc - results[point_index].Z) /c*1000);
+	double tol_c= S * stdv / 10000.0;
 	MatrixXd tol(1, 2);
-	tol << stdv / (10*c),stdv / (10 * 162);
+	tol << stdv / (10.0*c),stdv / (10.0 * 162.0);
 	double tol_min = tol.minCoeff();
-	
+	x_hat.resize(3, 1);
+	x_hat(0, 0) = results[point_index].X;
+	x_hat(1, 0) = results[point_index].Y;
+	x_hat(2, 0) = results[point_index].Z;
 
 	cout << "tolerance is  " << tol_c << "    "<< tol <<endl;;
 	MatrixXd P(num_pt*2, num_pt*2);
 	P.setIdentity();
 	P = P / (stdv/stdv);
 
-	MatrixXd delta(6, 1);
+	MatrixXd delta(3, 1);
 	delta = -(A.transpose()*P * A).inverse() * A.transpose() * P*w;
 	cout <<"delta  " << endl << delta << endl;
-	xhat = xhat + delta;
+	x_hat = x_hat + delta;
+	//cout << "final xhat" << endl << x_hat << endl;
 
 	vector <double> d;
 	for (int i= 0; i < delta.size(); i++) {
 		d.push_back(abs(delta(i, 0)));
 	}
 	double min1 = *max_element(d.begin(),d.begin() + 3);
-	double min2 = *max_element(d.begin()+3, d.end());
-	cout << " min   " << min1 << "min2   " << min2<<endl;
-	if (tol_c < min1 || tol_min < min2){
+	//double min2 = *max_element(d.begin()+3, d.end());
+	//cout << " min   " << min1 << "min2   " << min2<<endl;
+	cout << " min   " << min1 <<  endl;
+	if (tol_c < min1){
 		count++;
 		cout << "counter  " << count << endl;
 	}
 	else {
 		criteria = true;
-		cout << "final xhat" << endl << xhat << endl;
+		cout << "final xhat " << endl << x_hat << endl;
+		cout << "residuals " << endl << A * delta + w << endl;
+		cout << "C_xhat " << endl << (A.transpose() * P * A).inverse() * (pow(stdv,2))<< endl;
 	}
-	
+	/*
+	if (tol_c < min1 || tol_min < min2) {
+		count++;
+		cout << "counter  " << count << endl;
+	}
+	else {
+		criteria = true;
+		cout << "final xhat" << endl << x_hat << endl;
+	}
+	*/
 	//exit(1);
 }
-
-
-*/
