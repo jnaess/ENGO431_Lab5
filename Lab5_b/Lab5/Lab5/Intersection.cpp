@@ -60,6 +60,7 @@ void Intersection::getEOP(string filename) {
 				eop[i].phi *= ((atan(1) * 4) / 180);
 				eop[i].kappa *= ((atan(1) * 4) / 180);
 
+
 				cout << eop[i].Xc << " " << eop[i].Yc << " " << eop[i].Zc << " " << eop[i].omega << " " << eop[i].phi << " " << eop[i].kappa << endl;
 			}
 			i++;
@@ -186,57 +187,8 @@ MatrixXd Intersection::rotate(double angle, int axis) {
 
 }
 
-/*
-void Intersection::approximate() {
-	MatrixXd A(num_pt * 2, 4);
-	int row = A.rows();
-	A.setZero();
-	int j = 0;
-	for (unsigned int i = 0; i < A.rows() - 1; i += 2) {
-		A(i, 0) = imcoord[j].x;
-		A(i, 1) = -imcoord[j].y;
-		A(i, 2) = 1;
-		A(i + 1, 0) = imcoord[j].y;
-		A(i + 1, 1) = imcoord[j].x;
-		A(i + 1, 3) = 1;
-		j++;
-	}
-	//cout << A;
-	MatrixXd param(4, 1); // a,b,tx,ty
-	MatrixXd l(row, 1);
-	int k = 0;
-
-	for (unsigned int i = 0; i < row - 1; i += 2) {
-		l(i, 0) = objcoord[k].X;
-		l(i + 1, 0) = objcoord[k].Y;
-		z_ave += objcoord[k].Z;
-		k++;
-	}
-	z_ave = z_ave / num_pt;
-	param = (A.transpose() * A).inverse() * A.transpose() * l;
-	//cout << "obs"<<l<<endl<<"param"  <<param << endl;
-	double lamda = 0;
-	lamda = sqrt(pow(param(0, 0), 2) + pow(param(1, 0), 2));
-	Xc = param(2, 0);
-	Yc = param(3, 0);
-	Zc = c * lamda + z_ave;
-	kappa = atan2(param(1, 0), param(0, 0));
-
-	//cout << "param    " << Xc << "    "<< Yc << "    " << Zc << "    " << kappa << endl;
-	xhat.resize(6, 1);
-	xhat(0, 0) = Xc;
-	xhat(1, 0) = Yc;
-	xhat(2, 0) = Zc;
-	xhat(3, 0) = omega;
-	xhat(4, 0) = phi;
-	xhat(5, 0) = kappa;
-	//cout << "'approximate" << xhat << endl;
-}
-*/
-
 
 void Intersection::update(int point_index) {
-	// VV RENAME THE SECOND XHAT VV
 	results[point_index].X = x_hat(0, 0);
 	results[point_index].Y = x_hat(1, 0);
 	results[point_index].Z = x_hat(2, 0);
@@ -244,14 +196,11 @@ void Intersection::update(int point_index) {
 
 
 void Intersection::designA(int point_index) {
+	cout << "\n\n----- Now adjusting point: " << imcoord[point_index].id << " -----\n";
+	
 	A.resize(4, 3);
 	w.resize(4, 1);
-	//MatrixXd M(3,3);
-	//cout << omega << " " << phi << " " << kappa << -18.854 * ((atan(1) * 4) / 180) <<  endl;
-	//cout << kappa - (-18.854 * ((atan(1) * 4) / 180)) << endl;
-	//kappa = -18.854 * ((atan(1) * 4) / 180);
-
-	//M = rotate(kappa, 3) * rotate(phi, 2) * rotate(omega, 1);
+	
 	MatrixXd M_L(3, 3);
 	MatrixXd M_R(3, 3);
 	M_L = rotate(eop[0].kappa, 3) * rotate(eop[0].phi, 2) * rotate(eop[0].omega, 1);
@@ -266,9 +215,9 @@ void Intersection::designA(int point_index) {
 	double dyR = results[point_index].Y - eop[1].Yc;
 	double dzR = results[point_index].Z - eop[1].Zc;
 	//cout << Xc << " " << Yc << " " << Zc << endl;
-	cout << "dx = " << dxL << endl;
-	cout << "dy = " << dyL << endl;
-	cout << "dz = " << dzL << endl;
+	//cout << "dx = " << dxL << endl;
+	//cout << "dy = " << dyL << endl;
+	//cout << "dz = " << dzL << endl;
 	
 	// First two rows of design matrix (left image point)
 	double UL = M_L(0, 0) * dxL + M_L(0, 1) * dyL + M_L(0, 2) * dzL;
@@ -302,55 +251,11 @@ void Intersection::designA(int point_index) {
 	w(3, 0) = -(c * VR / WR) - imcoord[point_index+num_pt].y;
 	cout << A << endl;
 	cout << "misclosure" << endl << w << endl;
-
-	/*
-	int j = 0;
-	for (unsigned int i = 0; i < num_pt*2 - 1; i += 2) {
-		Xc = 6338.6;
-		Yc = 3984.6;
-		Zc = 1453.1;
-		//kappa = -18.854 * ((atan(1) * 4) / 180);
-		double dx = objcoord[j].X - Xc;
-		double dy = objcoord[j].Y - Yc;
-		double dz = objcoord[j].Z - Zc;
-		//cout << Xc << " " << Yc << " " << Zc << endl;
-
-		double U = M(0, 0) * dx + M(0, 1) * dy + M(0, 2) * dz;
-		double W = M(2, 0) * dx + M(2, 1) * dy + M(2, 2) * dz;
-		double V = M(1, 0) * dx + M(1, 1) * dy + M(1, 2) * dz;
-		double cW = -c / (W * W);
-		
-		A(i, 0) = cW * (M(2, 0) * U - M(0, 0) * W);
-		A(i, 1) = cW * (M(2, 1) * U - M(0, 1) * W);
-		A(i, 2) = cW * (M(2, 2) * U - M(0, 2) * W);
-		//A(i, 3) = cW * (dy * (U * M(2, 2) - W * M(0, 2)) - dz*(U * M(2, 1) - W * M(0, 1)));
-		//A(i, 3) = dy * A(i, 2) - dz * A(i, 1);
-		//A(i, 4) = cW * (dx * (-W * sin(phi) * cos(kappa) - U * cos(phi)) + dy * (W * sin(omega) * cos(phi) * cos(kappa) - U * sin(omega) * sin(phi))
-			//+ dz * (-W * cos(omega) * cos(phi) * cos(kappa) + U * cos(omega) * sin(phi)));
-		//A(i, 5) = -c * (V / W);
-
-		A(i+1, 0) = -cW * (M(2, 0) * V- M(1, 0) * W);
-		A(i+1, 1) = -cW * (M(2, 1) * V - M(1, 1) * W);
-		A(i+1, 2) = -cW * (M(2, 2) * V - M(1, 2) * W);
-		//A(i+1, 3) = cW * (dy * (V * M(2, 2) - W * M(1, 2)) - dz * (V * M(2, 1) - W * M(1, 1)));
-		//A(i+1, 4) = cW * (dx * (W * sin(phi) * sin(kappa) - V * cos(phi)) + dy * (-W * sin(omega) * cos(phi)*sin(kappa) - V * sin(omega)*sin(phi))
-			//+ dz * (W * cos(omega) * cos(phi) * sin(kappa) + V * cos(omega) * sin(phi)));
-		//A(i+1, 5) = c * U / W;
 	
-		// VV WHAT IS UP WITH THIS VV
-		w(i, 0) = -0.006 - (c * U / W) - imcoord[j].x;
-		w(i + 1, 0) = 0.006 - (c * V / W) - imcoord[j].y;
-		w(i, 0) = -(c * U / W) - imcoord[j].x;
-		w(i + 1, 0) = -(c * V / W) - imcoord[j].y;
-		j++;
-	}
-	*/
-	
-
 }
 
 void Intersection::getxhat(int point_index) {
-	double stdv = 0.015;
+	
 	double S = ceil((eop[0].Zc - results[point_index].Z) /c*1000);
 	double tol_c= S * stdv / 10000.0;
 	MatrixXd tol(1, 2);
@@ -360,11 +265,11 @@ void Intersection::getxhat(int point_index) {
 	x_hat(0, 0) = results[point_index].X;
 	x_hat(1, 0) = results[point_index].Y;
 	x_hat(2, 0) = results[point_index].Z;
-
-	cout << "tolerance is  " << tol_c << "    "<< tol <<endl;;
-	MatrixXd P(num_pt*2, num_pt*2);
+	cout << "tolerance is  " << tol_c << endl;
+	//cout << "tolerance is  " << tol_c << "    "<< tol <<endl;;
+	MatrixXd P(4, 4);
 	P.setIdentity();
-	P = P / (stdv/stdv);
+	P = P / (stdv*stdv);
 
 	MatrixXd delta(3, 1);
 	delta = -(A.transpose()*P * A).inverse() * A.transpose() * P*w;
@@ -387,8 +292,16 @@ void Intersection::getxhat(int point_index) {
 	else {
 		criteria = true;
 		cout << "final xhat " << endl << x_hat << endl;
-		cout << "residuals " << endl << A * delta + w << endl;
-		cout << "C_xhat " << endl << (A.transpose() * P * A).inverse() * (pow(stdv,2))<< endl;
+		results[point_index].v_hat = A * delta + w;
+		cout << "residuals " << endl << results[point_index].v_hat << endl;
+		MatrixXd C_xhat = (A.transpose() * P * A).inverse();
+		cout << "C_xhat " << endl << C_xhat << endl;
+		MatrixXd C_vhat = A * C_xhat * A.transpose();
+		MatrixXd I(4, 4);
+		I.setIdentity();
+		cout << "C_vhat " << endl << C_vhat << endl;
+		cout << "R " << endl << I - (C_vhat * P) << endl;
+
 	}
 	/*
 	if (tol_c < min1 || tol_min < min2) {
@@ -401,4 +314,38 @@ void Intersection::getxhat(int point_index) {
 	}
 	*/
 	//exit(1);
+}
+
+void Intersection::OutputResults(const string& filename)
+{
+	// Check if the output file can be opened
+	std::ofstream outFile(filename);
+	if (outFile.fail())
+	{
+		std::cout << "Could not open output file" << std::endl;
+		exit(1);
+	}
+
+
+
+
+	double Z_ave = 0;
+	VectorXd v_hattemp;
+	cout << "\n\n--- Final Results, Coordinates and Residuals (X [m], Y[m], Z[m], V_xL [mm], V_yL [mm], V_xR [mm], V_yR [mm], RMSE [mm]) ---\n";
+	for (int i = 0; i < num_pt; i++)
+	{
+		cout << setprecision(0) << fixed << imcoord[i].id << setprecision(8) << "  " << results[i].X << "  " << results[i].Y << "  " << results[i].Z << "  ";
+		cout << results[i].v_hat(0, 0) << "  " << results[i].v_hat(1, 0) << "  " << results[i].v_hat(2, 0) << "  " << results[i].v_hat(3, 0) << "  ";
+		v_hattemp = results[i].v_hat;
+		cout << sqrt(v_hattemp.dot(v_hattemp) / 4) << endl << setprecision(6);
+		cout.unsetf(ios_base::floatfield);
+
+		outFile << setprecision(0) << fixed << imcoord[i].id << setprecision(8) << "  " << results[i].X << "  " << results[i].Y << "  " << results[i].Z << "  ";
+		outFile << results[i].v_hat(0, 0) << "  " << results[i].v_hat(1, 0) << "  " << results[i].v_hat(2, 0) << "  " << results[i].v_hat(3, 0) << "  ";
+		outFile << sqrt(v_hattemp.dot(v_hattemp) / 4) << endl;
+		Z_ave += results[i].Z;
+	}
+	Z_ave /= num_pt;
+
+	cout << "Average height = " << Z_ave << endl;
 }

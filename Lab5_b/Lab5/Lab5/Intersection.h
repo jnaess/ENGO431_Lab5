@@ -22,6 +22,7 @@ struct EOP_model {
 };
 struct param {
 	double X, Y, Z;
+	MatrixXd v_hat;
 };
 
 class Intersection {
@@ -37,7 +38,11 @@ public:
 	int count = 0;
 	//double z_ave = 0;
 	//double Xc, Yc, Zc, omega, phi, kappa;
-	double c = 152.15; // sample data
+	double c;
+	double stdv;
+	//double stdv = 0.015; // sample data
+	//double stdv = 0.006; // our data
+	//double c = 152.15; // sample data
 	//double c = 153.358; // our data
 	bool criteria = false;
 	Intersection();
@@ -49,4 +54,5 @@ public:
 	MatrixXd rotate(double angle, int axis);
 	void designA(int point_index);
 	void getxhat(int point_index);
+	void OutputResults(const string& filename);
 };
