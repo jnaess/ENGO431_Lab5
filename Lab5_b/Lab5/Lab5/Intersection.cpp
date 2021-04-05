@@ -326,8 +326,8 @@ void Intersection::OutputResults(const string& filename)
 		exit(1);
 	}
 
-
-
+	MatrixXd V_RMSE(1, 4);
+	V_RMSE.setZero();
 
 	double Z_ave = 0;
 	VectorXd v_hattemp;
@@ -340,12 +340,28 @@ void Intersection::OutputResults(const string& filename)
 		cout << sqrt(v_hattemp.dot(v_hattemp) / 4) << endl << setprecision(6);
 		cout.unsetf(ios_base::floatfield);
 
+
+		for (int j = 0; j < 4; j++) 
+		{
+			V_RMSE(0, j) += pow(results[i].v_hat(j, 0), 2);
+		}
+		
+
+
+
+
 		outFile << setprecision(0) << fixed << imcoord[i].id << setprecision(8) << "  " << results[i].X << "  " << results[i].Y << "  " << results[i].Z << "  ";
 		outFile << results[i].v_hat(0, 0) << "  " << results[i].v_hat(1, 0) << "  " << results[i].v_hat(2, 0) << "  " << results[i].v_hat(3, 0) << "  ";
 		outFile << sqrt(v_hattemp.dot(v_hattemp) / 4) << endl;
 		Z_ave += results[i].Z;
+		
 	}
 	Z_ave /= num_pt;
-
+	
+	for (int j = 0; j < 4; j++)
+	{
+		V_RMSE(0, j) = sqrt(V_RMSE(0, j) / num_pt);
+	}
 	cout << "Average height = " << Z_ave << endl;
+	cout << "Residual RMSE (x_L, y_L, x_R, y_R) = " << V_RMSE << endl;
 }
